@@ -5,7 +5,6 @@ using UnityEngine.UI;
 
 public class BasicCellDisplayer<T> :  GridElementDisplayer<T> where T : IGridElement { 
     public GameObject Display(GridElement<T> element, Vector3 position, float cellSize) { 
-        element.OnValueChange += UpdateDisplay;
 
         // Display as a 2D square
         GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -31,7 +30,7 @@ public class BasicCellDisplayer<T> :  GridElementDisplayer<T> where T : IGridEle
         GameObject foreground = GameObject.CreatePrimitive(PrimitiveType.Quad);
         foreground.transform.position = new Vector3(position.x + borderSize, position.y + borderSize, -2);
         foreground.transform.localScale = new Vector3(foregroundSize, foregroundSize, 1);
-        foreground.GetComponent<Renderer>().material.color = Color.black;
+        foreground.GetComponent<Renderer>().material.color = getColorGradient(element.Value);
         foreground.name = "Foreground";
 
         // make the foreground a child of the cell
@@ -39,14 +38,6 @@ public class BasicCellDisplayer<T> :  GridElementDisplayer<T> where T : IGridEle
         
         return cell;
 
-    }
-
-    public void UpdateDisplay(object sender, System.EventArgs e) {
-        GridElement<T> element = (GridElement<T>)sender;
-
-        // change the color of the foreground based on the value of the element
-        Color color = getColorGradient(element.value);
-        element.displayElement.transform.Find("Foreground").GetComponent<Renderer>().material.color = color;
     }
 
 

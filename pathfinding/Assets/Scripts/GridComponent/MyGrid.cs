@@ -13,19 +13,18 @@ public class MyGrid<T> where T : IGridElement
     private float cellSize;
     public GridElement<T>[,] gridArray { get; private set; }
 
-    public MyGrid(int width, int height, float cellsSize, Vector3 originPosition, Func<int, int, T> baseValInitFunc) { 
+    public MyGrid(int width, int height, float cellsSize, Vector3 originPosition, Func<int, int, T> baseValInitFunc, GridElementDisplayer<T> displayer) { 
         this.width = width;
         this.height = height;
         this.cellSize = cellsSize;
         this.originPosition = originPosition;
         
         gridArray = new GridElement<T>[width, height];
-        GridElementDisplayer<T> displayer = new BasicCellDisplayer<T>();
 
         for (int x = 0; x < gridArray.GetLength(0); x++) {
             for (int y = 0; y < gridArray.GetLength(1); y++) {
                 gridArray[x, y] = new GridElement<T>(baseValInitFunc(x,y));
-                gridArray[x, y].display(displayer, GetWorldPosition(x, y) + new Vector3(cellSize, cellSize) * 0.5f, cellSize);
+                gridArray[x, y].Display(displayer, GetWorldPosition(x, y) + new Vector3(cellSize, cellSize) * 0.5f, cellSize);
             }
         }
 
@@ -73,7 +72,7 @@ public class MyGrid<T> where T : IGridElement
             throw new Exception("Index out of bounds");
         }
         
-        return gridArray[x, y].value;
+        return gridArray[x, y].Value;
     }
 
     public int GetValue(Vector3 worldPosition) {
@@ -100,13 +99,38 @@ public class MyGrid<T> where T : IGridElement
             throw new Exception("Index out of bounds");
         }
 
-        return gridArray[x, y].data;
+        return gridArray[x, y].Data;
     }
 
     public T getData(Vector3 worldPosition) {
         GetXY(worldPosition, out int x, out int y);
         return getData(x, y);
     }
+
+    public List<GridElement<T>> GetNeighbors(int x, int y) {
+        List<GridElement<T>> neighbors = new();
+
+        if (x - 1 >= 0) {
+            neighbors.Add(GetGridElement(x - 1, y));
+        }
+        if (x + 1 < width) {
+            neighbors.Add(GetGridElement(x + 1, y));
+        }
+        if (y - 1 >= 0) {
+            neighbors.Add(GetGridElement(x, y - 1));
+        }
+        if (y + 1 < height) {
+            neighbors.Add(GetGridElement(x, y + 1));
+        }
+
+        return neighbors;
+    }
+
+    public GridElement<T> GetGridElement(int x, int y) {
+        return gridArray[x, y];
+    }
+
+
 
 
 
