@@ -6,42 +6,79 @@ using UnityEngine;
 public class Testing : MonoBehaviour
 {
     private MyGrid<MapCell> grid;
+    private MyGrid<MapCell> secondGrid;
     [SerializeField] private Bouton startButton;
-
+    [SerializeField] private int Width = 20;
+    [SerializeField] private int Height = 10;
+    [SerializeField] private float Scale = 1;
+    [SerializeField] private GameObject SecondGridOrigin;
 
     [SerializeField] private Bouton startSolver;
     private bool isSolverRunning = false;
 
-    private Timer timer;
-
 
     private TwoDPathFinding pathFinding;
+    private TwoDPathFinding pathFinding2;
     
 
     // Start is called before the first frame update
     private void Start()
     {
-        // grid = new MyGrid(4, 2, 10f, new Vector3(20, 0));
         startButton.OnClick += OnStart;
         startSolver.OnClick += OnStartSolver;
     }
 
     // Update is called once per frame
     private void Update() {
-        if (grid != null) {
-            if (Input.GetMouseButtonDown(1)) {
-                try {
-                    int value = grid.GetValue(GetMouseWorldPosition());
-                    CellType type = grid.getData(GetMouseWorldPosition()).type;
-
-                    Debug.Log("Value: " + value + " Type: " + type);
-                }
-                catch {
-                    Debug.Log("-");
-
-                }
-            }
+        if (grid == null || secondGrid == null) { 
+            return;
         }
+
+        if (!isSolverRunning) {
+            if (Input.GetMouseButton(0)) {
+                try {
+                    Vector3 mouseWorldPosition = GetMouseWorldPosition();
+                    grid.GetXY(mouseWorldPosition, out int x, out int y);
+                    
+                    GridElement<MapCell> element = grid.GetGridElement(mouseWorldPosition);
+
+
+                    if (element.Data.Type == CellType.FLOOR || element.Data.Type == CellType.WALL) {
+                        element.Data.SetBaseType(CellType.WALL);
+                        element.RefreshDisplay();
+                    }
+
+                    GridElement<MapCell> element2 = secondGrid.GetGridElement(x,y);
+                    if (element2.Data.Type == CellType.FLOOR || element2.Data.Type == CellType.WALL) {
+                        element2.Data.SetBaseType(CellType.WALL);
+                        element2.RefreshDisplay();
+                    }
+                }
+                catch { }
+            }
+            if(Input.GetMouseButton(1)) {
+                try {
+                    Vector3 mouseWorldPosition = GetMouseWorldPosition();
+                    grid.GetXY(mouseWorldPosition, out int x, out int y);
+
+                    GridElement<MapCell> element = grid.GetGridElement(mouseWorldPosition);
+
+                    if (element.Data.Type == CellType.FLOOR || element.Data.Type == CellType.WALL) {
+                        element.Data.SetBaseType(CellType.FLOOR);
+                        element.RefreshDisplay();
+                    }
+
+                    GridElement<MapCell> element2 = secondGrid.GetGridElement(x, y);
+                    if (element2.Data.Type == CellType.FLOOR || element2.Data.Type == CellType.WALL) {
+                        element2.Data.SetBaseType(CellType.FLOOR);
+                        element2.RefreshDisplay();
+                    }
+                }
+                catch { }
+            }
+
+        }
+
     }
     private Vector3 GetMouseWorldPosition() {
         Vector3 vec = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -51,76 +88,29 @@ public class Testing : MonoBehaviour
 
     private void OnStart(object sender, System.EventArgs e) { 
         Vector3 selfOrigin = this.transform.position;
-        grid = new(map.GetLength(0), map.GetLength(1), 10f, selfOrigin, (int x, int y) => new MapCell(GetCellType(map[x, y]), x, y), new MapCellDisplay<MapCell>());
-        pathFinding = new(grid);
+        float cellSize = 10f * Scale;
+        grid = new(Width, Height, cellSize, selfOrigin, (int x, int y) => new(GetCellType(x, y), x, y), new MapCellDisplay<MapCell>(Scale));
+        pathFinding = new(grid, EuristicType.MANHATTAN);
+
+
+        Vector3 secondGridOrigin = SecondGridOrigin.transform.position;
+        secondGrid = new(Width, Height, cellSize, secondGridOrigin, (int x, int y) => new(GetCellType(x, y), x, y), new MapCellDisplay<MapCell>(Scale));
+        pathFinding2 = new(secondGrid, EuristicType.VECTOR);
     }
 
     private void OnStartSolver(object sender, System.EventArgs e) {
-        //if (isSolverRunning) {
-        //    isSolverRunning = false;
-        //    this.timer.Stop();
-        //}
-        //isSolverRunning = true;
-        //float loopTimeMs = 1000;
-        //this.timer = new(loopTimeMs);
-        //this.timer.Elapsed += (object sender, ElapsedEventArgs e) => {
+        if (grid == null) return;
+        isSolverRunning = true;
         pathFinding.nextStep();
-        //};
-        //this.timer.Start();
+        pathFinding2.nextStep();
     }
 
-    private CellType GetCellType(char c) {
-        switch (c) {
-            case 'W':
-                return CellType.WALL;
-            case 'F':
-                return CellType.FLOOR;
-            case 'P':
-                return CellType.PLAYER;
-            case 'O':
-                return CellType.OBJECTIVE;
-            default:
-                return CellType.FLOOR;
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-    private readonly char[,] uiFriendlyMap = new char[,] {
-        {'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W','W', 'W', 'W', 'W','W', 'W', 'W', 'W' } // 0
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'F', 'F','F', 'W', 'F', 'F','F', 'F', 'O', 'W' } // 1
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'F', 'F','F', 'W', 'F', 'F','F', 'F', 'F', 'W' } // 2
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'W', 'F','F', 'W', 'F', 'F','F', 'F', 'F', 'W' } // 3
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'W', 'F','F', 'W', 'F', 'F','F', 'F', 'F', 'W' } // 4
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'W', 'F','F', 'W', 'F', 'F','F', 'F', 'F', 'W' } // 5
-        ,{'W', 'F', 'F', 'F', 'F', 'F', 'W', 'F','F', 'F', 'F', 'F','F', 'F', 'F', 'W' } // 6
-        ,{'W', 'P', 'F', 'F', 'F', 'F', 'W', 'F','F', 'F', 'F', 'F','F', 'F', 'F', 'W' } // 7
-        ,{'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W','W', 'W', 'W', 'W','W', 'W', 'W', 'W' } // 8
-    };
-
-
-
-
-
-    private readonly char[,] map;
-
-    Testing() {
-        
-        char[,] newMap = new char[uiFriendlyMap.GetLength(1), uiFriendlyMap.GetLength(0)];
-        for (int x = 0; x < uiFriendlyMap.GetLength(0); x++) {
-            for (int y = 0; y < uiFriendlyMap.GetLength(1); y++) {
-                newMap[y, x] = uiFriendlyMap[uiFriendlyMap.GetLength(0) - 1 - x,  y];
-            }
-        }
-
-        map = newMap;
+    private CellType GetCellType(int x, int y) {
+        if (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
+            return CellType.WALL;
+        if (x == 1 && y == 1) return CellType.PLAYER;
+        if (x == Width - 2 && y == Height - 2) return CellType.OBJECTIVE;
+        return CellType.FLOOR;
     }
 
 

@@ -1,7 +1,11 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
+
+public enum EuristicType {
+    VECTOR,
+    MANHATTAN
+}
 
 public class TwoDPathFinding {
     private MyGrid<MapCell> grid;
@@ -13,22 +17,31 @@ public class TwoDPathFinding {
 
     private PathFindingNode<GridElement<MapCell>> currentNode;
 
+    private readonly Func<GridElement<MapCell>, GridElement<MapCell>, float> CalcEuristic;
+
+    
+
     private bool solved = false;
     private bool started = false;
 
 
     //private List<GridElement<MapCell>> solution;
 
-    public TwoDPathFinding(MyGrid<MapCell> grid) {
+    public TwoDPathFinding(MyGrid<MapCell> grid, EuristicType euristic) { 
         this.grid = grid;
+        CalcEuristic = euristic switch {
+            EuristicType.VECTOR => CalcEuristicVector,
+            EuristicType.MANHATTAN => CalcEuristicManhattan,
+            _ => CalcEuristicVector
+        };
 
-        for (int x = 0; x < grid.gridArray.GetLength(0); x++) {
-            for (int y = 0; y < grid.gridArray.GetLength(1); y++) {
+        for (int x = 0; x < grid.GridArray.GetLength(0); x++) {
+            for (int y = 0; y < grid.GridArray.GetLength(1); y++) {
                 GridElement<MapCell> cell = grid.GetGridElement(x, y);  
-                if (cell.Data.type == CellType.PLAYER) {
+                if (cell.Data.Type == CellType.PLAYER) {
                     playerCell = cell;
                 }
-                else if (cell.Data.type == CellType.OBJECTIVE) {
+                else if (cell.Data.Type == CellType.OBJECTIVE) {
                     objectiveCell = cell;
                 }
             }
@@ -60,7 +73,7 @@ public class TwoDPathFinding {
         frontierNodes.RemoveAt(0);
 
 
-        List<GridElement<MapCell>> neighbors = grid.GetNeighbors(currentNode.element.Data.x, currentNode.element.Data.y);
+        List<GridElement<MapCell>> neighbors = grid.GetNeighbors(currentNode.element.Data.X, currentNode.element.Data.Y);
 
 
         List<GridElement<MapCell>> validNeighbors = new();
@@ -74,11 +87,11 @@ public class TwoDPathFinding {
                 continue;
             }
 
-            if (neighbor.Data.type != CellType.WALL) {
+            if (neighbor.Data.Type != CellType.WALL) {
                 validNeighbors.Add(neighbor);
             }
 
-            if (neighbor.Data.type == CellType.OBJECTIVE) {
+            if (neighbor.Data.Type == CellType.OBJECTIVE) {
                 visitedNodes.Add(currentNode);
                 visitedNodes.Add(new(neighbor, currentNode));
                 solved = true;
@@ -88,21 +101,22 @@ public class TwoDPathFinding {
 
 
         foreach (GridElement<MapCell> neighbor in validNeighbors) {
-            neighbor.Data.SetType(CellType.FRONTIER);
-            neighbor.SetValue((int)CalcEuristic(neighbor, objectiveCell));
-            frontierNodes.Add(new(neighbor, currentNode));
+            PathFindingNode<GridElement<MapCell>> node = new(neighbor, currentNode);
+            node.SetType(CellType.FRONTIER);
+            node.SetEuristic(CalcEuristic(neighbor, objectiveCell));
+            frontierNodes.Add(node);
         }
 
         visitedNodes.Add(currentNode);
-
-        frontierNodes.Sort((node1, node2) => node1.element.Data.value.CompareTo(node2.element.Data.value));
+        // TODO : Use a priority queue instead : https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.priorityqueue-2?view=net-8.0
+        frontierNodes.Sort((node1, node2) => node1.EuristicCost.CompareTo(node2.EuristicCost)); //
 
     }
 
     public void EndStep() {
         if (solved) {
             List<GridElement<MapCell>> path = new();
-            PathFindingNode<GridElement<MapCell>> currentNode = visitedNodes[visitedNodes.Count - 1];
+            PathFindingNode<GridElement<MapCell>> currentNode = visitedNodes[^1];
             while (currentNode.parent != null) {
                 path.Add(currentNode.element);
                 //currentNode.element.Data.SetType(CellType.PATH);
@@ -114,11 +128,11 @@ public class TwoDPathFinding {
             path.Reverse();
 
             foreach (GridElement<MapCell> cell in path) {
-                if(cell.Data.type != CellType.PLAYER && cell.Data.type != CellType.OBJECTIVE) {
+                if(cell.Data.Type != CellType.PLAYER && cell.Data.Type != CellType.OBJECTIVE) {
                     cell.Data.SetType(CellType.PATH);
                 }
                 cell.RefreshDisplay();
-                Debug.Log(cell.Data.x + " " + cell.Data.y);
+                Debug.Log(cell.Data.X + " " + cell.Data.Y);
             }
 
         }
@@ -137,9 +151,20 @@ public class TwoDPathFinding {
        
     }
 
-    private float CalcEuristic(GridElement<MapCell> origin, GridElement<MapCell> destination) { 
-        return Vector2.Distance(new Vector2(origin.Data.x, origin.Data.y), new Vector2(destination.Data.x, destination.Data.y));
+    private float CalcEuristicVector(GridElement<MapCell> origin, GridElement<MapCell> destination) {
+        // TODO : use square distance instead of square root 
+        return Vector2.Distance(new Vector2(origin.Data.X, origin.Data.Y), new Vector2(destination.Data.X, destination.Data.Y));
+        // using Manhattan distance
+        // TODO : try use a cache : https://stackoverflow.com/questions/754233/is-it-there-any-lru-implementation-of-idictionary
+        //return Mathf.Abs(origin.Data.X - destination.Data.X) + Mathf.Abs(origin.Data.Y - destination.Data.Y);
     }
+
+    private float CalcEuristicManhattan(GridElement<MapCell> origin, GridElement<MapCell> destination) {
+        return Mathf.Abs(origin.Data.X - destination.Data.X) + Mathf.Abs(origin.Data.Y - destination.Data.Y);
+        
+    }
+
+
 
     
 }
