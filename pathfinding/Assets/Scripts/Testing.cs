@@ -19,17 +19,33 @@ public class Testing : MonoBehaviour
 
     private TwoDPathFinding pathFinding;
     private TwoDPathFinding pathFinding2;
-    
+
+    private bool isPathfindingDone = false;
+    private bool isPathfinding2Done = false;
+
+
 
     // Start is called before the first frame update
     private void Start()
     {
         startButton.OnClick += OnStart;
-        startSolver.OnClick += OnStartSolver;
+        //startSolver.OnClick += NextSolverStep;
+        startSolver.OnClick += (sender, e) => {
+            isSolverRunning = true;
+        };
     }
+
 
     // Update is called once per frame
     private void Update() {
+        // if previous step is was 500ms ago then do next step
+        Time.fixedDeltaTime = 0.5f;
+        if (isSolverRunning && !isPathfinding2Done && !isPathfindingDone) { 
+            NextSolverStep(null, null);
+        }
+
+
+
         if (grid == null || secondGrid == null) { 
             return;
         }
@@ -98,11 +114,27 @@ public class Testing : MonoBehaviour
         pathFinding2 = new(secondGrid, EuristicType.VECTOR);
     }
 
-    private void OnStartSolver(object sender, System.EventArgs e) {
+    private void NextSolverStep(object sender, System.EventArgs e) {
         if (grid == null) return;
         isSolverRunning = true;
-        pathFinding.nextStep();
-        pathFinding2.nextStep();
+        if (pathFinding != null) { 
+            if (!pathFinding.solved) {
+                pathFinding.nextStep();
+            }
+            else if (!isPathfindingDone) {
+                pathFinding.EndStep();
+                isPathfindingDone = true;
+            }
+        }
+        if (pathFinding2 != null) { 
+            if (!pathFinding2.solved) {
+                pathFinding2.nextStep();
+            }
+            else if (!isPathfinding2Done) {
+                pathFinding2.EndStep();
+                isPathfinding2Done = true;
+            }
+        }
     }
 
     private CellType GetCellType(int x, int y) {

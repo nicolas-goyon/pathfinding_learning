@@ -19,9 +19,9 @@ public class TwoDPathFinding {
 
     private readonly Func<GridElement<MapCell>, GridElement<MapCell>, float> CalcEuristic;
 
-    
 
-    private bool solved = false;
+
+    public bool solved { get; private set; } = false;
     private bool started = false;
 
 
